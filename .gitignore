@@ -143,4 +143,5 @@ vite.config.ts.timestamp-*
 .vite/
 
 macOS
-.DS_Store
+.DS_Storepreview.png
+preview.jpg

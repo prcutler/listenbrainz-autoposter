@@ -1,0 +1,46 @@
+name: Weekly ListenBrainz → Bluesky / Mastodon
+
+on:
+  schedule:
+    # Every Tuesday at 15:07 UTC.
+    # ListenBrainz's "week" range is last week's completed Mon–Sun, and its
+    # stats are batch-computed with a day or two of lag — running on Tuesday
+    # guarantees last week's data is final. (GitHub cron is best-effort and
+    # may run a few minutes late; that's fine for a weekly job.)
+    - cron: "7 15 * * 2"
+
+  # Allow manual runs from the Actions tab, with an optional dry-run preview.
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Preview the post without sending it"
+        type: boolean
+        default: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # Chromium for the image render (with OS deps for the CI runner).
+      - run: npx playwright install --with-deps chromium
+
+      - name: Post weekly top albums
+        run: node src/index.mjs
+        env:
+          LISTENBRAINZ_USERNAME: ${{ secrets.LISTENBRAINZ_USERNAME }}
+          # Bluesky (optional)
+          BSKY_USERNAME: ${{ secrets.BSKY_USERNAME }}
+          BSKY_PASSWORD: ${{ secrets.BSKY_PASSWORD }}
+          # Mastodon (optional)
+          MASTODON_INSTANCE: ${{ secrets.MASTODON_INSTANCE }}
+          MASTODON_TOKEN: ${{ secrets.MASTODON_TOKEN }}
+          DRY_RUN: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '1' || '' }}
