@@ -1,4 +1,4 @@
-# ListenBrainz Blue
+# ListenBrainz Autoposter
 
 Posts your **ListenBrainz top 5 albums from last week** to **Bluesky and/or Mastodon**,
 automatically, every Tuesday — running entirely on **GitHub Actions** (no Cloudflare, no server to
