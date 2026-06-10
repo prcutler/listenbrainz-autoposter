@@ -7,6 +7,8 @@ run).
 Inspired by [scrobble-blue](https://github.com/willmanduffy/scrobble-blue), but rebuilt around
 GitHub Actions + ListenBrainz instead of a Cloudflare Worker.
 
+![Example image of top 5 weekly albums](top5.png)
+
 Also checkout my [ListenBrainz-widget](https://prcutler.github.io/listenbrainz-widget/index.html) to embed your top listens in a webpage or manually create an image you can share on the social media platform of your choice.
 
 ## How it works
