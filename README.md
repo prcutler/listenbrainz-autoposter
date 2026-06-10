@@ -37,9 +37,9 @@ revocable and works with MFA enabled).
 ### 2. Push this project to a GitHub repo
 
 ```bash
-cd listenbrainz-blue
+cd listenbrainz-autoposter
 git init && git add . && git commit -m "Initial commit"
-git remote add origin git@github.com:<you>/listenbrainz-blue.git
+git remote add origin git@github.com:<you>/listenbrainz-autoposter.git
 git push -u origin main
 ```
 
