@@ -1,0 +1,17 @@
+{
+  "name": "listenbrainz-blue",
+  "version": "1.0.0",
+  "description": "Post your ListenBrainz weekly top artists to Bluesky every Tuesday — no Cloudflare required.",
+  "type": "module",
+  "main": "src/index.mjs",
+  "scripts": {
+    "start": "node src/index.mjs",
+    "local": "node --env-file=.env src/index.mjs",
+    "dry-run": "DRY_RUN=1 node --env-file=.env src/index.mjs"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@atproto/api": "^0.13.35",
+    "playwright": "^1.49.0"
+  }
+}
