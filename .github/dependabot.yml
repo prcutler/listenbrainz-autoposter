@@ -1,0 +1,21 @@
+version: 2
+updates:
+  # Keep GitHub Actions (checkout, setup-node, …) up to date.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:13"
+    commit-message:
+      prefix: "ci"
+
+  # Keep npm dependencies (@atproto/api, playwright) up to date.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:13"
+    commit-message:
+      prefix: "deps"
