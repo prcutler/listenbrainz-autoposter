@@ -41,7 +41,7 @@ const GRAPHEMES = text => [...new Intl.Segmenter().segment(text)].length;
 
 // Short caption that accompanies the image.
 function buildCaption(count, range, lbUser) {
-  const header = `🎧 My top ${count} albums on ListenBrainz last week` +
+  const header = `🎧 My top ${count} artists on ListenBrainz last week` +
     (range ? ` (${range})` : "");
   const profile = `https://listenbrainz.org/user/${lbUser}/`;
   const withLink = `${header}\n\n${profile}`;
@@ -51,7 +51,7 @@ function buildCaption(count, range, lbUser) {
 // Accessible alt text describing the image contents.
 function buildAltText(albums, range) {
   const lines = albums.map((a, i) => `${i + 1}. ${a.album} — ${a.artist} (${a.plays} plays)`);
-  const head = `My top ${albums.length} albums on ListenBrainz last week` +
+  const head = `My top ${albums.length} artists on ListenBrainz last week` +
     (range ? ` (${range})` : "") + ":";
   return `${head}\n${lines.join("\n")}`;
 }
