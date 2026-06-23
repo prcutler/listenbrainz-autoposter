@@ -89,7 +89,7 @@ before posting for real.
 A **1200×1200 image** of your top 5 albums with cover art, plus a short caption:
 
 ```
-🎧 My top 5 albums on ListenBrainz last week (May 25 – May 31)
+🎧 My top 5 artists on ListenBrainz last week (May 25 – May 31)
 
 https://listenbrainz.org/user/silwenae/
 ```
