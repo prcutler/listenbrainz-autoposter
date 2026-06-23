@@ -2,12 +2,14 @@ name: Weekly ListenBrainz → Bluesky / Mastodon
 
 on:
   schedule:
-    # Every Tuesday at 15:07 UTC.
-    # ListenBrainz's "week" range is last week's completed Mon–Sun, and its
-    # stats are batch-computed with a day or two of lag — running on Tuesday
-    # guarantees last week's data is final. (GitHub cron is best-effort and
-    # may run a few minutes late; that's fine for a weekly job.)
-    - cron: "7 15 * * 2"
+    # Every Wednesday at 15:00 UTC.
+    # ListenBrainz's "week" range is last week's completed Mon–Sun, but its
+    # stats rollover lag varies — on 2026-06-23 the "week" range still showed
+    # the week before last as of Tuesday 16:07 UTC, and only flipped over to
+    # the correct week sometime before 19:15 UTC that day. Running on
+    # Wednesday gives a full extra day of buffer. (GitHub cron is best-effort
+    # and may run a few minutes late; that's fine for a weekly job.)
+    - cron: "0 15 * * 3"
 
   # Allow manual runs from the Actions tab, with an optional dry-run preview.
   workflow_dispatch:
