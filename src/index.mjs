@@ -39,6 +39,12 @@ function required(name, value) {
 
 const GRAPHEMES = text => [...new Intl.Segmenter().segment(text)].length;
 
+// ListenBrainz's "week" stats normally lag a day or two behind, but their
+// stats engine can stall much longer (observed: stuck on the same week for
+// 8+ days while raw listens kept recording fine). Past this many days old,
+// treat the window as not-yet-updated rather than post it as "last week".
+const STALE_AFTER_DAYS = 9;
+
 // Short caption that accompanies the image.
 function buildCaption(count, range, lbUser) {
   const header = `🎧 My top ${count} artists on ListenBrainz last week` +
@@ -64,6 +70,15 @@ async function main() {
 
   if (!albums.length) {
     console.log("→ No listening data for last week — nothing to post. Done.");
+    return;
+  }
+
+  if (to && Date.now() - to.getTime() > STALE_AFTER_DAYS * 86_400_000) {
+    console.warn(
+      `⚠ ListenBrainz's "week" stats haven't advanced past ${to.toISOString().slice(0, 10)} ` +
+      `(${STALE_AFTER_DAYS}+ days old) — their stats engine is behind, not ours. ` +
+      `Skipping this run rather than posting stale data as "last week".`
+    );
     return;
   }
 

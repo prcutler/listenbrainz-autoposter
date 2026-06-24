@@ -27,6 +27,12 @@ Its stats are also batch-computed with a lag that can vary — on 2026-06-23 a T
 still got the week before last, only flipping over to the correct week later that same day. Running
 on **Wednesday** instead gives a full extra day of buffer before posting.
 
+That buffer helps with normal lag, but ListenBrainz's stats engine can stall much longer than a day
+or two — on 2026-06-24 it was still serving the *same* stale week it had the day before, with
+`last_updated` on their API frozen for 8+ days while raw listens kept recording fine. No schedule
+change fixes that, so the script itself checks how old the returned week is and **skips posting**
+(rather than re-posting stale data) if it's more than `STALE_AFTER_DAYS` (currently 9) days behind.
+
 ## Setup
 
 ### 1. Get credentials for at least one destination
