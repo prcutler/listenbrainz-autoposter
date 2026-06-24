@@ -92,7 +92,7 @@ export function buildHtml({ albums, rangeLabel, username }) {
   <div id="card">
     <div class="header">
       <span class="eq"><span></span><span></span><span></span><span></span><span></span></span>
-      <span class="title">Top 5 Albums · Last Week</span>
+      <span class="title">Top 5 Albums · Last Month</span>
       ${rangeLabel ? `<span class="range">${esc(rangeLabel)}</span>` : ""}
     </div>
     <div class="list">${rows}</div>

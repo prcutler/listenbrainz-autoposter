@@ -2,8 +2,8 @@
 // Bluesky (AT Protocol) wrapper.
 //
 // Uses an app password (Bluesky → Settings → App Passwords). We log in fresh
-// on each run — at a weekly cadence there's no need to cache the session, so
-// there's no equivalent of scrobble-blue's Cloudflare KV here.
+// on each run — at a monthly cadence there's no need to cache the session,
+// so there's no equivalent of scrobble-blue's Cloudflare KV here.
 // ─────────────────────────────────────────────────────────────────────────
 
 import { AtpAgent, RichText } from "@atproto/api";

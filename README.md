@@ -1,37 +1,40 @@
 # ListenBrainz Autoposter
 
-Posts your **ListenBrainz top 5 albums from last week** to **Bluesky and/or Mastodon**,
-automatically, every Wednesday — running entirely on **GitHub Actions** (no Cloudflare, no server to
-run).
+Posts your **ListenBrainz top 5 albums from last month** to **Bluesky and/or Mastodon**,
+automatically, on the 4th of every month — running entirely on **GitHub Actions** (no Cloudflare, no
+server to run).
 
 Inspired by [scrobble-blue](https://github.com/willmanduffy/scrobble-blue), but rebuilt around
 GitHub Actions + ListenBrainz instead of a Cloudflare Worker.
 
-![Example image of top 5 weekly albums](top5.png)
+![Example image of top 5 albums](top5.png)
 
 Also checkout my [ListenBrainz-widget](https://prcutler.github.io/listenbrainz-widget/index.html) to embed your top listens in a webpage or manually create an image you can share on the social media platform of your choice.
 
 ## How it works
 
-- A scheduled GitHub Actions workflow runs **every Wednesday at 15:00 UTC**.
-- It reads your **last completed week** of listens from the public ListenBrainz statistics API
-  (`range=week`).
+- A scheduled GitHub Actions workflow runs **on the 4th of every month at 15:00 UTC**.
+- It reads your **last completed calendar month** of listens from the public ListenBrainz
+  statistics API (`range=month`).
 - It renders a **1200×1200 image** of your top 5 albums (with cover art) using headless Chromium
   (Playwright), then posts it to Bluesky with a short caption and accessible alt text.
 - If the image render ever fails, it automatically falls back to a **text-only** post.
 
-### Why Wednesday / why "last week"?
+### Why the 4th / why monthly instead of weekly?
 
-ListenBrainz's `week` range is **last week's completed Monday–Sunday**, *not* a rolling 7 days.
-Its stats are also batch-computed with a lag that can vary — on 2026-06-23 a Tuesday 15:07 UTC run
-still got the week before last, only flipping over to the correct week later that same day. Running
-on **Wednesday** instead gives a full extra day of buffer before posting.
+This originally ran weekly (every Wednesday), reading ListenBrainz's `week` range. That fought their
+[update schedule](https://listenbrainz.readthedocs.io/en/latest/general/data-update-intervals.html):
+they only do a full stats reimport on the **1st and 15th of the month**. In June 2026 the `week`
+range got stuck serving the same stale window for **8+ days** — `last_updated` on their API was
+frozen the whole time, even though raw listens kept recording fine. No amount of schedule-shuffling
+fixes a problem that's upstream, so the project moved to `range=month`, which only needs to flip over
+once a month, right when ListenBrainz already does its full reimport. Posting on the **4th** gives a
+few days of buffer after the 1st-of-month reimport.
 
-That buffer helps with normal lag, but ListenBrainz's stats engine can stall much longer than a day
-or two — on 2026-06-24 it was still serving the *same* stale week it had the day before, with
-`last_updated` on their API frozen for 8+ days while raw listens kept recording fine. No schedule
-change fixes that, so the script itself checks how old the returned week is and **skips posting**
-(rather than re-posting stale data) if it's more than `STALE_AFTER_DAYS` (currently 9) days behind.
+That buffer helps with normal lag, but doesn't guarantee ListenBrainz's stats engine won't stall for
+days at a *month* boundary the same way it did at a *week* boundary. So the script still checks how
+old the returned month is and **skips posting** (rather than re-posting stale data) if it's more than
+`STALE_AFTER_DAYS` (currently 15) days behind.
 
 ## Setup
 
@@ -71,9 +74,9 @@ Leave out the secrets for any platform you don't want to post to.
 
 ### 4. Test it
 
-Go to the **Actions** tab → **Weekly ListenBrainz → Bluesky** → **Run workflow**, and tick
+Go to the **Actions** tab → **Monthly ListenBrainz → Bluesky** → **Run workflow**, and tick
 **dry run** to preview the post text in the logs without sending it. When you're happy, run it again
-without dry run (or just wait for Wednesday).
+without dry run (or just wait for the 4th).
 
 ## Running locally
 
@@ -95,7 +98,7 @@ before posting for real.
 A **1200×1200 image** of your top 5 albums with cover art, plus a short caption:
 
 ```
-🎧 My top 5 artists on ListenBrainz last week (May 25 – May 31)
+🎧 My top 5 artists on ListenBrainz last month (May 1 – May 31)
 
 https://listenbrainz.org/user/silwenae/
 ```
@@ -115,13 +118,13 @@ falls back to text automatically if Chromium fails for any reason.
   exceeds the limit it's re-encoded as JPEG automatically.
 - **Top artists instead of albums?** ListenBrainz also exposes `/stats/user/{user}/artists`. Swap
   the endpoint in `src/listenbrainz.mjs` and the wording in `src/index.mjs` / `src/template.mjs`.
-- **GitHub Actions cron is best-effort** and can run a few minutes late — fine for a weekly job, but
+- **GitHub Actions cron is best-effort** and can run a few minutes late — fine for a monthly job, but
   not suitable for minute-by-minute tasks.
 
 ## Project layout
 
 ```
-.github/workflows/weekly-post.yml   # the Wednesday schedule + manual trigger
+.github/workflows/monthly-post.yml  # the 4th-of-month schedule + manual trigger
 src/index.mjs                       # orchestration + caption/alt text
 src/listenbrainz.mjs                # ListenBrainz stats fetch + cover-art URLs
 src/template.mjs                    # the 1200×1200 HTML card

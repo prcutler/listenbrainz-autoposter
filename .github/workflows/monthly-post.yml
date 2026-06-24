@@ -1,15 +1,17 @@
-name: Weekly ListenBrainz → Bluesky / Mastodon
+name: Monthly ListenBrainz → Bluesky / Mastodon
 
 on:
   schedule:
-    # Every Wednesday at 15:00 UTC.
-    # ListenBrainz's "week" range is last week's completed Mon–Sun, but its
-    # stats rollover lag varies — on 2026-06-23 the "week" range still showed
-    # the week before last as of Tuesday 16:07 UTC, and only flipped over to
-    # the correct week sometime before 19:15 UTC that day. Running on
-    # Wednesday gives a full extra day of buffer. (GitHub cron is best-effort
-    # and may run a few minutes late; that's fine for a weekly job.)
-    - cron: "0 15 * * 3"
+    # The 4th of every month at 15:00 UTC.
+    # ListenBrainz only does a full stats reimport on the 1st and 15th of the
+    # month (see https://listenbrainz.readthedocs.io/en/latest/general/data-update-intervals.html),
+    # so a weekly cadence was fighting their update schedule — the "week"
+    # range stalled on the same window for 8+ days in June 2026 (see README
+    # for the full story). Posting on the 4th gives a few days of buffer
+    # after the 1st-of-month reimport before reading range=month. (GitHub
+    # cron is best-effort and may run a bit late; that's fine for a monthly
+    # job.)
+    - cron: "0 15 4 * *"
 
   # Allow manual runs from the Actions tab, with an optional dry-run preview.
   workflow_dispatch:
@@ -35,7 +37,7 @@ jobs:
       # Chromium for the image render (with OS deps for the CI runner).
       - run: npx playwright install --with-deps chromium
 
-      - name: Post weekly top albums
+      - name: Post monthly top albums
         run: node src/index.mjs
         env:
           LISTENBRAINZ_USERNAME: ${{ secrets.LISTENBRAINZ_USERNAME }}

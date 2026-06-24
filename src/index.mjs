@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────
-// Entry point: fetch last week's top albums from ListenBrainz, render them as
-// an image, and post it to Bluesky. Runs weekly from GitHub Actions (see
-// .github/workflows/weekly-post.yml).
+// Entry point: fetch last month's top albums from ListenBrainz, render them
+// as an image, and post it to Bluesky. Runs monthly from GitHub Actions (see
+// .github/workflows/monthly-post.yml).
 //
 // Configure one or both destinations — it posts to whichever has credentials.
 //
@@ -39,15 +39,16 @@ function required(name, value) {
 
 const GRAPHEMES = text => [...new Intl.Segmenter().segment(text)].length;
 
-// ListenBrainz's "week" stats normally lag a day or two behind, but their
-// stats engine can stall much longer (observed: stuck on the same week for
-// 8+ days while raw listens kept recording fine). Past this many days old,
-// treat the window as not-yet-updated rather than post it as "last week".
-const STALE_AFTER_DAYS = 9;
+// ListenBrainz only fully reimports stats on the 1st and 15th of the month,
+// and their stats engine can stall well past that (observed: stuck on the
+// same week for 8+ days in June 2026 while raw listens kept recording
+// fine). Past this many days old, treat the window as not-yet-updated
+// rather than post it as "last month".
+const STALE_AFTER_DAYS = 15;
 
 // Short caption that accompanies the image.
 function buildCaption(count, range, lbUser) {
-  const header = `🎧 My top ${count} artists on ListenBrainz last week` +
+  const header = `🎧 My top ${count} artists on ListenBrainz last month` +
     (range ? ` (${range})` : "");
   const profile = `https://listenbrainz.org/user/${lbUser}/`;
   const withLink = `${header}\n\n${profile}`;
@@ -57,7 +58,7 @@ function buildCaption(count, range, lbUser) {
 // Accessible alt text describing the image contents.
 function buildAltText(albums, range) {
   const lines = albums.map((a, i) => `${i + 1}. ${a.album} — ${a.artist} (${a.plays} plays)`);
-  const head = `My top ${albums.length} artists on ListenBrainz last week` +
+  const head = `My top ${albums.length} artists on ListenBrainz last month` +
     (range ? ` (${range})` : "") + ":";
   return `${head}\n${lines.join("\n")}`;
 }
@@ -65,19 +66,19 @@ function buildAltText(albums, range) {
 async function main() {
   const lbUser = required("LISTENBRAINZ_USERNAME", LISTENBRAINZ_USERNAME);
 
-  console.log(`→ Fetching last week's top albums for "${lbUser}"…`);
-  const { albums, from, to } = await getTopAlbums(lbUser, { range: "week", count: 5 });
+  console.log(`→ Fetching last month's top albums for "${lbUser}"…`);
+  const { albums, from, to } = await getTopAlbums(lbUser, { range: "month", count: 5 });
 
   if (!albums.length) {
-    console.log("→ No listening data for last week — nothing to post. Done.");
+    console.log("→ No listening data for last month — nothing to post. Done.");
     return;
   }
 
   if (to && Date.now() - to.getTime() > STALE_AFTER_DAYS * 86_400_000) {
     console.warn(
-      `⚠ ListenBrainz's "week" stats haven't advanced past ${to.toISOString().slice(0, 10)} ` +
+      `⚠ ListenBrainz's "month" stats haven't advanced past ${to.toISOString().slice(0, 10)} ` +
       `(${STALE_AFTER_DAYS}+ days old) — their stats engine is behind, not ours. ` +
-      `Skipping this run rather than posting stale data as "last week".`
+      `Skipping this run rather than posting stale data as "last month".`
     );
     return;
   }
