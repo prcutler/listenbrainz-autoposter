@@ -39,12 +39,14 @@ function required(name, value) {
 
 const GRAPHEMES = text => [...new Intl.Segmenter().segment(text)].length;
 
-// ListenBrainz only fully reimports stats on the 1st and 15th of the month,
-// and their stats engine can stall well past that (observed: stuck on the
-// same week for 8+ days in June 2026 while raw listens kept recording
-// fine). Past this many days old, treat the window as not-yet-updated
-// rather than post it as "last month".
-const STALE_AFTER_DAYS = 15;
+// Returns the UTC timestamp for the first day of the current calendar month.
+// The "month" stats range should return this exact date as its `to` value
+// (last completed month ends at the start of the current month). If the
+// returned `to` is earlier, ListenBrainz's stats engine hasn't caught up yet.
+function expectedMonthBoundary() {
+  const n = new Date();
+  return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), 1));
+}
 
 // Short caption that accompanies the image.
 function buildCaption(count, range, lbUser) {
@@ -74,10 +76,13 @@ async function main() {
     return;
   }
 
-  if (to && Date.now() - to.getTime() > STALE_AFTER_DAYS * 86_400_000) {
+  const expected = expectedMonthBoundary();
+  if (to && to < expected) {
+    const got      = to.toISOString().slice(0, 7);   // e.g. "2026-06"
+    const want     = expected.toISOString().slice(0, 7); // e.g. "2026-07"
     console.warn(
-      `⚠ ListenBrainz's "month" stats haven't advanced past ${to.toISOString().slice(0, 10)} ` +
-      `(${STALE_AFTER_DAYS}+ days old) — their stats engine is behind, not ours. ` +
+      `⚠ ListenBrainz's "month" stats are still showing ${got} instead of ${want} — ` +
+      `their stats engine hasn't caught up yet. ` +
       `Skipping this run rather than posting stale data as "last month".`
     );
     return;

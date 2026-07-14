@@ -2,16 +2,16 @@ name: Monthly ListenBrainz → Bluesky / Mastodon
 
 on:
   schedule:
-    # The 4th of every month at 15:00 UTC.
-    # ListenBrainz only does a full stats reimport on the 1st and 15th of the
-    # month (see https://listenbrainz.readthedocs.io/en/latest/general/data-update-intervals.html),
-    # so a weekly cadence was fighting their update schedule — the "week"
-    # range stalled on the same window for 8+ days in June 2026 (see README
-    # for the full story). Posting on the 4th gives a few days of buffer
-    # after the 1st-of-month reimport before reading range=month. (GitHub
-    # cron is best-effort and may run a bit late; that's fine for a monthly
-    # job.)
-    - cron: "0 15 4 * *"
+    # The 14th of every month at 15:00 UTC.
+    # ListenBrainz does a full stats reimport on the 1st and 15th of the
+    # month (see https://listenbrainz.readthedocs.io/en/latest/general/data-update-intervals.html).
+    # We originally ran on the 4th (3 days after the 1st reimport) but in
+    # July 2026 the reimport took ~12 days to process, so the staleness guard
+    # fired and skipped the post entirely. The 14th gives 13+ days of buffer
+    # and also sits just before the 15th reimport, which may itself re-process
+    # the previous month's stats and help. (GitHub cron is best-effort and
+    # may run a bit late; that's fine for a monthly job.)
+    - cron: "0 15 14 * *"
 
   # Allow manual runs from the Actions tab, with an optional dry-run preview.
   workflow_dispatch:
