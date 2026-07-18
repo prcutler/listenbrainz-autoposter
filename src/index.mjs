@@ -50,7 +50,7 @@ function expectedMonthBoundary() {
 
 // Short caption that accompanies the image.
 function buildCaption(count, range, lbUser) {
-  const header = `🎧 My top ${count} artists on ListenBrainz last month` +
+  const header = `🎧 My top ${count} artists on #ListenBrainz last month` +
     (range ? ` (${range})` : "");
   const profile = `https://listenbrainz.org/user/${lbUser}/`;
   const withLink = `${header}\n\n${profile}`;
@@ -60,7 +60,7 @@ function buildCaption(count, range, lbUser) {
 // Accessible alt text describing the image contents.
 function buildAltText(albums, range) {
   const lines = albums.map((a, i) => `${i + 1}. ${a.album} — ${a.artist} (${a.plays} plays)`);
-  const head = `My top ${albums.length} artists on ListenBrainz last month` +
+  const head = `My top ${albums.length} artists on #ListenBrainz last month` +
     (range ? ` (${range})` : "") + ":";
   return `${head}\n${lines.join("\n")}`;
 }
