@@ -1,18 +1,11 @@
 name: Monthly ListenBrainz → Bluesky / Mastodon
 
 on:
-  schedule:
-    # The 14th of every month at 15:00 UTC.
-    # ListenBrainz does a full stats reimport on the 1st and 15th of the
-    # month (see https://listenbrainz.readthedocs.io/en/latest/general/data-update-intervals.html).
-    # We originally ran on the 4th (3 days after the 1st reimport) but in
-    # July 2026 the reimport took ~12 days to process, so the staleness guard
-    # fired and skipped the post entirely. The 14th gives 13+ days of buffer
-    # and also sits just before the 15th reimport, which may itself re-process
-    # the previous month's stats and help. (GitHub cron is best-effort and
-    # may run a bit late; that's fine for a monthly job.)
-    - cron: "0 15 14 * *"
-
+  # The monthly schedule now runs from cron on a self-hosted Linux box
+  # (see README → "Self-hosting on Linux"), because GitHub disables
+  # scheduled workflows after 60 days without repo activity. This workflow
+  # is kept as a manual fallback only — re-adding a `schedule:` here would
+  # double-post alongside the cron job.
   # Allow manual runs from the Actions tab, with an optional dry-run preview.
   workflow_dispatch:
     inputs:
@@ -27,18 +20,15 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-python@v6
         with:
-          node-version: 22
-          cache: npm
+          python-version: "3.12"
+          cache: pip
 
-      - run: npm ci
-
-      # Chromium for the image render (with OS deps for the CI runner).
-      - run: npx playwright install --with-deps chromium
+      - run: pip install -r requirements.txt
 
       - name: Post monthly top albums
-        run: node src/index.mjs
+        run: python -m autoposter
         env:
           LISTENBRAINZ_USERNAME: ${{ secrets.LISTENBRAINZ_USERNAME }}
           # Bluesky (optional)

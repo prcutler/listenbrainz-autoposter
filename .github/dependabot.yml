@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # Keep GitHub Actions (checkout, setup-node, …) up to date.
+  # Keep GitHub Actions (checkout, setup-python, …) up to date.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -10,8 +10,8 @@ updates:
     commit-message:
       prefix: "ci"
 
-  # Keep npm dependencies (@atproto/api, playwright) up to date.
-  - package-ecosystem: "npm"
+  # Keep Python dependencies (Pillow) up to date.
+  - package-ecosystem: "pip"
     directory: "/"
     schedule:
       interval: "weekly"
