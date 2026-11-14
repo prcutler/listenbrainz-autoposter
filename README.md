@@ -1,11 +1,11 @@
 # ListenBrainz Autoposter
 
 Posts your **ListenBrainz top 5 albums from last month** to **Bluesky and/or Mastodon**,
-automatically, on the 4th of every month — running entirely on **GitHub Actions** (no Cloudflare, no
-server to run).
+automatically, once a month (as soon as ListenBrainz has the data after the 15th) — run by **cron on any Linux box** (a home server, a Raspberry
+Pi, a cheap VPS).
 
 Inspired by [scrobble-blue](https://github.com/willmanduffy/scrobble-blue), but rebuilt around
-GitHub Actions + ListenBrainz instead of a Cloudflare Worker.
+ListenBrainz and a plain cron job instead of a Cloudflare Worker.
 
 ![Example image of top 5 albums](top5.png)
 
@@ -13,14 +13,17 @@ Also checkout my [ListenBrainz-widget](https://prcutler.github.io/listenbrainz-w
 
 ## How it works
 
-- A scheduled GitHub Actions workflow runs **on the 4th of every month at 15:00 UTC**.
+- A cron job runs [`scripts/run.sh`](scripts/run.sh) **daily from the 16th to the 28th**, but it
+  **posts only once a month**: the first run that finds last month's stats posts, and the rest
+  exit quietly.
 - It reads your **last completed calendar month** of listens from the public ListenBrainz
   statistics API (`range=month`).
-- It renders a **1200×1200 image** of your top 5 albums (with cover art) using headless Chromium
-  (Playwright), then posts it to Bluesky with a short caption and accessible alt text.
+- It draws a **1200×1200 image** of your top 5 albums (with cover art) using
+  [Pillow](https://python-pillow.org/), then posts it with a short caption and accessible alt text.
+- It's plain **Python** with one dependency (Pillow) — no Node.js and no headless browser.
 - If the image render ever fails, it automatically falls back to a **text-only** post.
 
-### Why the 4th / why monthly instead of weekly?
+### Why the 16th–28th / why monthly instead of weekly?
 
 This originally ran weekly (every Wednesday), reading ListenBrainz's `week` range. That fought their
 [update schedule](https://listenbrainz.readthedocs.io/en/latest/general/data-update-intervals.html):
@@ -28,13 +31,28 @@ they only do a full stats reimport on the **1st and 15th of the month**. In June
 range got stuck serving the same stale window for **8+ days** — `last_updated` on their API was
 frozen the whole time, even though raw listens kept recording fine. No amount of schedule-shuffling
 fixes a problem that's upstream, so the project moved to `range=month`, which only needs to flip over
-once a month, right when ListenBrainz already does its full reimport. Posting on the **4th** gives a
-few days of buffer after the 1st-of-month reimport.
+once a month, right when ListenBrainz already does its full reimport. It originally posted on the
+**4th**, then the **14th**, but those reimports keep running late: in July 2026 the 1st-of-month
+reimport took ~12 days, and in November 2026 it still hadn't landed by the 14th.
 
-That buffer helps with normal lag, but doesn't guarantee ListenBrainz's stats engine won't stall for
-days at a *month* boundary the same way it did at a *week* boundary. So the script still checks how
-old the returned month is and **skips posting** (rather than re-posting stale data) if it's more than
-`STALE_AFTER_DAYS` (currently 15) days behind.
+Both reimports produce the same "last month" stats, so by the **16th** there have been two chances
+for them to land. Neither is guaranteed to be on time, though, so instead of betting on one day the
+job runs every day from the 16th to the 28th:
+
+- Each run checks that the stats are actually for last month and **skips** (rather than posting
+  stale data) if ListenBrainz hasn't caught up yet.
+- After a successful post, the month is recorded per platform in `.autoposter-state.json`, so later
+  runs that month do nothing. If one platform fails (say Mastodon is down), the next day's run
+  retries just that one, without double-posting to the other.
+- Stopping at the 28th keeps every run inside the same calendar month, so "last month" never
+  changes underneath it.
+
+### Why cron instead of GitHub Actions?
+
+GitHub **disables scheduled workflows after 60 days with no repository activity**. A monthly job
+in a repo that rarely changes trips that constantly, so the schedule now lives in cron on a machine
+you control. The GitHub workflow is still there, but only as a **manual** fallback (Actions →
+Run workflow) — it no longer runs on a schedule, so it can't double-post.
 
 ## Setup
 
@@ -48,50 +66,81 @@ revocable and works with MFA enabled).
 **Mastodon:** your instance → **Preferences → Development → New Application**, with scopes
 `write:statuses` and `write:media`, then copy the access token.
 
-### 2. Push this project to a GitHub repo
+### 2. Install on your Linux box
+
+Requires **Python 3.10+** and git. On Debian/Ubuntu you may also need `sudo apt install python3-venv`.
 
 ```bash
-cd listenbrainz-autoposter
-git init && git add . && git commit -m "Initial commit"
-git remote add origin git@github.com:<you>/listenbrainz-autoposter.git
-git push -u origin main
+git clone https://github.com/<you>/listenbrainz-autoposter.git ~/listenbrainz-autoposter
+cd ~/listenbrainz-autoposter
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+cp .env.example .env && chmod 600 .env         # then fill it in
 ```
 
-### 3. Add repository secrets
+(If you'd rather skip the virtualenv, `sudo apt install python3-pil` works too — `scripts/run.sh`
+falls back to the system `python3` when there's no `.venv`.)
 
-In your repo: **Settings → Secrets and variables → Actions → New repository secret**. Add
-`LISTENBRAINZ_USERNAME` plus the secrets for whichever destination(s) you want:
-
-| Secret | Value | Needed for |
+| `.env` key | Value | Needed for |
 |---|---|---|
-| `LISTENBRAINZ_USERNAME` | your ListenBrainz username (e.g. `silwenae`) | always |
+| `LISTENBRAINZ_USERNAME` | your ListenBrainz username | always |
 | `BSKY_USERNAME` | your Bluesky handle (e.g. `you.bsky.social`) | Bluesky |
 | `BSKY_PASSWORD` | the app password from step 1 | Bluesky |
 | `MASTODON_INSTANCE` | your instance URL (e.g. `https://mastodon.social`) | Mastodon |
 | `MASTODON_TOKEN` | the access token from step 1 | Mastodon |
 
-Leave out the secrets for any platform you don't want to post to.
+Leave a platform's values blank to skip it.
 
-### 4. Test it
+### 3. Test it
 
-Go to the **Actions** tab → **Monthly ListenBrainz → Bluesky** → **Run workflow**, and tick
-**dry run** to preview the post text in the logs without sending it. When you're happy, run it again
-without dry run (or just wait for the 4th).
+```bash
+scripts/run.sh --dry-run
+```
+
+This prints the post, writes `./preview.png`, and sends nothing. Output is also appended to
+`logs/YYYY-MM.log`.
+
+### 4. Add the cron job
+
+Run `crontab -e` and add:
+
+```cron
+# ListenBrainz autoposter — 15:00 daily on the 16th–28th; posts once per month
+0 15 16-28 * * $HOME/listenbrainz-autoposter/scripts/run.sh >/dev/null 2>&1
+```
+
+Cron uses the machine's **local time zone** (check with `timedatectl`); adjust the hour if you
+want it at a particular UTC time. Output goes to `logs/`, so cron's own mail is silenced above — drop
+the `>/dev/null 2>&1` if your box has mail set up and you'd like a copy.
+
+The script uses the project's `.venv` automatically, so cron's minimal `PATH` isn't a problem. To
+use a different interpreter, set `PYTHON=/path/to/python` at the start of the cron line.
+
+To post again for a month that's already been posted, run `scripts/run.sh --force`, or delete
+`.autoposter-state.json`.
+
+To check a run afterwards:
+
+```bash
+tail -n 40 ~/listenbrainz-autoposter/logs/$(date -u +%Y-%m).log
+```
+
+### Updating
+
+```bash
+cd ~/listenbrainz-autoposter && git pull && .venv/bin/pip install -r requirements.txt
+```
 
 ## Running locally
 
-Requires **Node.js 20.6+** (for `--env-file`).
+Same as the Linux setup — it runs anywhere with Python 3.10+ (macOS included):
 
 ```bash
-cp .env.example .env                  # fill in your details
-npm install
-npx playwright install chromium       # one-time: download the browser
-npm run dry-run                       # prints the post + writes ./preview.png, does NOT send it
-npm run local                         # actually posts to Bluesky
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+cp .env.example .env                       # fill in your details
+.venv/bin/python -m autoposter --dry-run   # prints the post + writes ./preview.png, does NOT send it
+.venv/bin/python -m autoposter             # actually posts
 ```
-
-`npm run dry-run` saves the rendered card to `./preview.png` (or `.jpg`) so you can eyeball the image
-before posting for real.
 
 ## What gets posted
 
@@ -100,7 +149,7 @@ A **1200×1200 image** of your top 5 albums with cover art, plus a short caption
 ```
 🎧 My top 5 artists on ListenBrainz last month (May 1 – May 31)
 
-https://listenbrainz.org/user/silwenae/
+https://listenbrainz.org/user/<you>/
 ```
 
 The full ranked list (album — artist — play count) goes into the image's **alt text** for
@@ -110,26 +159,31 @@ rendered as a clickable link on both Bluesky (via facets) and Mastodon (auto-lin
 ### Text-only mode
 
 Set `TEXT_ONLY=1` to skip the image and post the full ranked list as text instead. The renderer also
-falls back to text automatically if Chromium fails for any reason.
+falls back to text automatically if drawing the image fails for any reason.
 
 ## Notes & ideas
 
-- **Image size:** Bluesky caps image blobs at 1 MB. The card is screenshotted as PNG, and if that
-  exceeds the limit it's re-encoded as JPEG automatically.
+- **Image size:** Bluesky caps image blobs at 1 MB. The card is saved as PNG, and if that exceeds
+  the limit it's re-encoded as JPEG automatically.
+- **Fonts:** the card uses Fraunces, Hanken Grotesk and DM Mono, bundled in `autoposter/fonts/`
+  (SIL Open Font License). Album titles in scripts those fonts don't cover (e.g. CJK) will show
+  placeholder boxes.
 - **Top artists instead of albums?** ListenBrainz also exposes `/stats/user/{user}/artists`. Swap
-  the endpoint in `src/listenbrainz.mjs` and the wording in `src/index.mjs` / `src/template.mjs`.
-- **GitHub Actions cron is best-effort** and can run a few minutes late — fine for a monthly job, but
-  not suitable for minute-by-minute tasks.
+  the endpoint in `autoposter/listenbrainz.py` and the wording in `autoposter/__main__.py` /
+  `autoposter/image.py`.
+- **Machine off for a few days?** Thanks to the daily 16th–28th window, a missed day just means it
+  posts on the next one. If it misses the whole window, run `scripts/run.sh` by hand.
 
 ## Project layout
 
 ```
-.github/workflows/monthly-post.yml  # the 4th-of-month schedule + manual trigger
-src/index.mjs                       # orchestration + caption/alt text
-src/listenbrainz.mjs                # ListenBrainz stats fetch + cover-art URLs
-src/template.mjs                    # the 1200×1200 HTML card
-src/image.mjs                       # Playwright render → PNG/JPEG buffer
-src/bluesky.mjs                     # Bluesky login + post (with image embed)
-src/mastodon.mjs                    # Mastodon media upload + status post
-.env.example                        # local config template
+scripts/run.sh                      # cron entry point: loads .env, logs to logs/
+autoposter/__main__.py              # orchestration + caption/alt text
+autoposter/listenbrainz.py          # ListenBrainz stats fetch + cover-art URLs
+autoposter/image.py                 # draws the 1200×1200 card with Pillow
+autoposter/bluesky.py               # Bluesky login + post (with image embed)
+autoposter/mastodon.py              # Mastodon media upload + status post
+autoposter/fonts/                   # bundled card fonts (OFL)
+.github/workflows/monthly-post.yml  # manual-only fallback on GitHub Actions
+.env.example                        # config template
 ```

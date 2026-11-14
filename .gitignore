@@ -148,3 +148,11 @@ vite.config.ts.timestamp-*
 # Dry-run preview output
 preview.png
 preview.jpg
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Months already posted (written by the autoposter)
+.autoposter-state.json
